@@ -123,7 +123,7 @@ LLM-MAS/
 
 ## Usage
 
-### 1. Generate dialogue
+### 1. Generate dialogue(if needed)
 
 ```bash
 # Single Agent
