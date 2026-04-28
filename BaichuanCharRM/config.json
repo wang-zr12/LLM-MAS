@@ -1,0 +1,29 @@
+{
+  "_from_model_config": true,
+  "_name_or_path": "baichuan-inc/Baichuan2-13B-Base",
+  "architectures": [
+    "BaichuanRM"
+  ],
+  "auto_map": {
+    "AutoConfig": "baichuan-inc/Baichuan2-13B-Base--configuration_baichuan.BaichuanConfig",
+    "AutoModelForCausalLM": "baichuan-inc/Baichuan2-13B-Base--modeling_baichuan.BaichuanForCausalLM"
+  },
+  "bos_token_id": 1,
+  "eos_token_id": 2,
+  "hidden_act": "silu",
+  "hidden_size": 5120,
+  "initializer_range": 0.02,
+  "intermediate_size": 13696,
+  "model_max_length": 4096,
+  "model_type": "baichuan",
+  "num_attention_heads": 40,
+  "num_hidden_layers": 40,
+  "pad_token_id": 0,
+  "rms_norm_eps": 1e-06,
+  "tie_word_embeddings": false,
+  "tokenizer_class": "BaichuanTokenizer",
+  "torch_dtype": "bfloat16",
+  "transformers_version": "4.30.2",
+  "use_cache": false,
+  "vocab_size": 125696
+}
