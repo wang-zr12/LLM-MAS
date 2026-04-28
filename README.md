@@ -118,21 +118,20 @@ The CharacterRM scorer evaluates across three groups:
 ```
 LLM-MAS/
 ├── roleplay_generator/         # Generation pipelines
-│   ├── sa_async.py             # Single Agent (async)
-│   ├── sa_CoT_async.py         # Single Agent + CoT (async)
-│   ├── sa_r1.py                # Single Agent with Reasoning
-│   ├── mas0.py                 # MAS without Critic
-│   ├── mas1.py                 # Full MAS
+|   ├── role_play_synthesis/    # Generator
 │   └── experiments/            # Experiment scripts
 ├── model/                      # Mirror of generation pipelines (used for KB experiments)
 │   ├── mas1.py                 # Full MAS + hybrid KIE Analyzer
 │   ├── mas_prompt_only.py      # Full MAS + prompt-only KIE Analyzer (JSONL KB)
 │   └── knowledge_extractor.py  # Hybrid KIE: rules + LLM-NER + KB
+│   ├── sa_async.py             # Single Agent (async)
+│   ├── sa_CoT_async.py         # Single Agent + CoT (async)
+│   ├── sa_r1.py                # Single Agent with Reasoning
+│   ├── mas0.py                 # MAS old version
 ├── BaichuanCharRM/             # CharacterRM reward model
-├── data/                       # CharacterEval dataset
+├── data/                       # dataset
 ├── my_results/                 # Raw model outputs
 ├── middle_results/             # Intermediate processing results
-│   └── kb_updates.jsonl        # Append-only KB upsert log (prompt-only variant)
 ├── LLMInterface.py             # Unified LLM API interface
 ├── IO.py                       # I/O utilities
 ├── main.py                     # Entry point
