@@ -9,6 +9,7 @@ from typing import Dict, List, Optional
 from datetime import datetime
 from IO import ResultWriter, load_file
 from tenacity import retry, stop_after_attempt, wait_exponential
+from model.knowledge_extractor import KnowledgeBase, KnowledgeExtractor
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -31,12 +32,15 @@ class MemoryLog:
         return "\n".join(self.data["history"])
 
 
-# Task Specifier
+# Task Specifier (Analyzer)
 class TaskSpecifier:
-    def __init__(self, llm: LLMInterface, max_context_tokens: int = 4096, max_response_time: int = 15):
+    def __init__(self, llm: LLMInterface, max_context_tokens: int = 4096, max_response_time: int = 15,
+                 kb: Optional[KnowledgeBase] = None):
         self.llm = llm
         self.max_context_tokens = max_context_tokens
         self.max_response_time = max_response_time
+        self.kb = kb or KnowledgeBase()
+        self.extractor = KnowledgeExtractor(llm, self.kb)
 
     @staticmethod
     def prepare_messages(system_message: str, user_message: str) -> List[Dict]:
@@ -47,15 +51,29 @@ class TaskSpecifier:
 
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
     async def specify_task(self, role: str, context: str, role_info: str) -> str:
+        # Stage 0: key-information extraction (NER + rules), async coref, conflict-aware KB update.
+        kb_report = await self.extractor.process(role, role_info, context)
+        kb_block = kb_report["kb_snapshot"] or "(暂无结构化信息)"
+        conflict_block = (
+            "\n".join(f"- {c['slot']}: {c['old']} -> {c['new']}" for c in kb_report["conflicts"])
+            or "(无冲突)"
+        )
+
         system_message = (
             f"你是一名专注于角色扮演的分析与总结专家。请根据以下要素重构角色背景信息：\n"
             f"== 执行步骤 == \n"
             f"角色分析 - 解析{role}的设定词典; "
+            f"结构化事实参考 - 优先采用知识库中的事实，遇到冲突时以最新事实为准; "
             f"上下文过滤 - 在背景信息中提取与对话相关的信息，排除冗余信息; "
             f"知识补充 - 如果信息较少则根据经验知识补充角色设定以及与对话有关的合理细节。\n "
             f"== 输出要求 ==\n重新组织{role}人物说明。"
         )
-        user_message = f"== {role} 信息 == \n{role_info}\n== 对话文本 ==\n{context}#"
+        user_message = (
+            f"== {role} 信息 == \n{role_info}\n"
+            f"== 结构化知识库 ==\n{kb_block}\n"
+            f"== 冲突更新 ==\n{conflict_block}\n"
+            f"== 对话文本 ==\n{kb_report['resolved_context']}#"
+        )
         messages = self.prepare_messages(system_message, user_message)
 
         try:
@@ -158,7 +176,8 @@ class MultiAgentFramework:
         self.en_specifier = agent_config.get("en_specifier")
         self.en_critic = agent_config.get("en_critic")
         self.memory_log = MemoryLog()
-        self.task_specifier = TaskSpecifier(self.llm)
+        self.knowledge_base = KnowledgeBase()
+        self.task_specifier = TaskSpecifier(self.llm, kb=self.knowledge_base)
         self.critic = CriticSection(self.llm, self.memory_log.data)
         self.agents = [ActionAgent(self.llm, f"Agent{i + 1}", self.memory_log.data) for i in range(1)]
 
