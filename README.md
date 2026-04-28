@@ -1,7 +1,7 @@
 # LLM-MAS: Multi-Agent Collaboration-Enhanced Role-Playing Dialogue Generation
 
 > 面向角色扮演的基于多智能体协作增强的对话生成方法  
-> Southeast University (东南大学) Undergraduate Thesis | Wang Zirui (王梓芮) | 2024.12 – 2025.5
+> Southeast University (东南大学) Undergraduate Thesis | 2024.12 – 2025.5
 
 ---
 
@@ -147,17 +147,6 @@ python run_characterRM.py
 ```bash
 python eval.py
 python visualization.py
-```
-
----
-
-## Citation
-
-If you use this codebase, please cite:
-
-```
-王梓芮. 面向角色扮演的基于多智能体协作增强的对话生成方法 [D].
-东南大学本科毕业论文, 2025.
 ```
 
 ---
