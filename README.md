@@ -13,18 +13,49 @@ The framework consists of four collaborative modules:
 
 | Module | Role |
 |--------|------|
-| **Analyzer** | Parses user input and decomposes the role-playing task |
-| **Actor (Action Agent)** | Generates dialogue conditioned on role profile, conversation history, and memory |
+| **Analyzer** | Parses user input, runs **key information extraction** (structured facts + coref + KB conflict resolution), and reformulates the role description |
+| **Actor (Action Agent)** | Generates dialogue conditioned on the analyzed role profile, conversation history, and memory |
 | **Critic** | Evaluates the Actor's output and provides iterative feedback |
 | **Memory & Log** | Maintains FIFO conversation history and cross-turn context |
 
-**Pipeline**: `Input → Analyzer → Actor ⇌ Critic (feedback loop) → Output`
+**Pipeline**:
+
+```
+                    ┌───── Feedback / Critique ─────┐
+                    ▼                               │
+Input → Analyzer ──task──► Action ──response──► Critic ──pass / reach limit──► Output
+            ▲                                       │
+            └────────── Feedback / Critique ────────┘
+                ▲           ▲           ▲
+                └───────────┼───────────┘
+                            ▼
+                          Memory
+```
+
+The Critic emits feedback along **two** paths: (1) back to the **Action** agent for output-level revision, and (2) back to the **Analyzer** when the dialogue exposes role-knowledge errors, hallucinated slots, or stale KB entries — triggering re-extraction and KB reconciliation before the Actor regenerates. The loop terminates when the Critic returns *pass* or the iteration limit is reached. All three modules read from and write to the shared **Memory** module.
+
+### Key Information Extraction (inside the Analyzer)
+
+To mitigate role drift and contextual forgetting in long multi-turn dialogues, the Analyzer maintains a per-role **structured Knowledge Base** that is updated each turn through three stages:
+
+1. **Structured fact extraction** — slot-typed entities (name, alias, age, location, occupation, relation, skill, personality, goal, …) extracted from `role_info` and the dialogue context.
+2. **Asynchronous coreference resolution** — pronouns (他 / 她 / 此人 / 该角色 …) referring to the target role are replaced with the role's name before downstream extraction.
+3. **Conflict detection & KB update** — newly extracted facts are merged against the existing KB; conflicts are recorded with `{slot, previous, new, source, timestamp}` and the prompt of the Analyzer is conditioned on both the current KB snapshot and the conflict log.
+
+Two implementations are provided:
+
+| File | Extraction Strategy | KB Storage |
+|------|--------------------|------------|
+| [model/knowledge_extractor.py](model/knowledge_extractor.py) + [model/mas1.py](model/mas1.py) | **Hybrid**: regex rule patterns + LLM-based NER (parallel via `asyncio.gather`) | In-memory dict |
+| [model/mas_prompt_only.py](model/mas_prompt_only.py) | **Prompt-only**: reuses the existing LLM with three dedicated prompts (extract / coref / conflict-reconcile) — no extra network or rules | Append-only **JSONL** at `middle_results/kb_updates.jsonl` |
 
 ---
 
 ## Key Features
 
 - Collaborative multi-agent architecture with iterative critique-and-refine
+- **Key Information Extraction** in the Analyzer: structured fact slots, async coreference resolution, conflict-aware KB update (hybrid NER+rules version and prompt-only version)
+- Persistent JSONL knowledge base (`middle_results/kb_updates.jsonl`) capturing every upsert with provenance
 - Structured system prompt engineering (Role Play, Control Flow, Output Confine, Facilitate Automation, Grounding)
 - Ablation study isolating contributions of the Specifier and Critic modules
 - Batch inference support (up to 40 samples/iteration) for efficient evaluation
@@ -68,7 +99,7 @@ The CharacterRM scorer evaluates across three groups:
 
 **Role-playing Attractiveness**: Humanlikeness (HL), Communication Skills (CS), Emotional Depth (ED), Empathy (Emp.)
 
-### Main Results
+### Main Results (CharacterEval)
 
 | Model | Char. Consistency Avg. | Conv. Ability Avg. | RP Attractiveness Avg. |
 |-------|----------------------|-------------------|----------------------|
@@ -93,10 +124,15 @@ LLM-MAS/
 │   ├── mas0.py                 # MAS without Critic
 │   ├── mas1.py                 # Full MAS
 │   └── experiments/            # Experiment scripts
+├── model/                      # Mirror of generation pipelines (used for KB experiments)
+│   ├── mas1.py                 # Full MAS + hybrid KIE Analyzer
+│   ├── mas_prompt_only.py      # Full MAS + prompt-only KIE Analyzer (JSONL KB)
+│   └── knowledge_extractor.py  # Hybrid KIE: rules + LLM-NER + KB
 ├── BaichuanCharRM/             # CharacterRM reward model
 ├── data/                       # CharacterEval dataset
 ├── my_results/                 # Raw model outputs
 ├── middle_results/             # Intermediate processing results
+│   └── kb_updates.jsonl        # Append-only KB upsert log (prompt-only variant)
 ├── LLMInterface.py             # Unified LLM API interface
 ├── IO.py                       # I/O utilities
 ├── main.py                     # Entry point
