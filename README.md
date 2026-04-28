@@ -68,7 +68,7 @@ The CharacterRM scorer evaluates across three groups:
 
 **Role-playing Attractiveness**: Humanlikeness (HL), Communication Skills (CS), Emotional Depth (ED), Empathy (Emp.)
 
-### Main Results (CharacterEval)
+### Main Results
 
 | Model | Char. Consistency Avg. | Conv. Ability Avg. | RP Attractiveness Avg. |
 |-------|----------------------|-------------------|----------------------|
