@@ -1,7 +1,7 @@
 # LLM-MAS: Multi-Agent Collaboration-Enhanced Role-Playing Dialogue Generation
 
 > 面向角色扮演的基于多智能体协作增强的对话生成方法  
-> Southeast University (东南大学) Undergraduate Thesis | 2024.12 – 2025.5
+> Southeast University (东南大学) Undergraduate Thesis | 2025.1 – 2025.5
 
 ---
 
